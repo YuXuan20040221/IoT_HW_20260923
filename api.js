@@ -12,7 +12,41 @@ let _cachedForecastData = null;
 let _cachedGeoData = null;
 
 /**
- * 取得即時觀測歷史時間清單
+ * 取得最新資料抓取的時間戳記或指定歷史時間戳記
+ * @param {number} [historyIndex=-1]
+ * @returns {string}
+ */
+function getLatestUpdateTime(historyIndex = -1) {
+  if (!_cachedObsPayload) return "即時更新";
+
+  const history = _cachedObsPayload.history || [];
+  let targetTimestamp = null;
+
+  if (historyIndex >= 0 && history[historyIndex]) {
+    targetTimestamp = history[historyIndex].timestamp;
+  } else if (_cachedObsPayload.updatedAt) {
+    targetTimestamp = _cachedObsPayload.updatedAt;
+  } else if (history.length > 0) {
+    targetTimestamp = history[history.length - 1].timestamp;
+  }
+
+  if (targetTimestamp) {
+    const d = new Date(targetTimestamp);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString("zh-TW", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  }
+  return "最新觀測";
+}
+
+/**
+ * 取得即時觀測歷史時間清單（過去最多 12 小時 / 12 個時段）
  * @returns {Promise<Array<{ label: string, index: number, timestamp: string }>>}
  */
 async function fetchObservationHistoryList() {
@@ -22,19 +56,34 @@ async function fetchObservationHistoryList() {
     _cachedObsPayload = await res.json();
   }
 
-  const history = _cachedObsPayload.history || [];
-  if (!history.length) {
-    return [{ label: "最新觀測", index: -1, timestamp: new Date().toISOString() }];
+  const allHistory = _cachedObsPayload.history || [];
+  if (!allHistory.length) {
+    return [{ label: "最新觀測記錄", index: -1, timestamp: new Date().toISOString() }];
   }
 
+  // 取出過去最多 12 筆
+  const history = allHistory.slice(-12);
+  const totalCount = history.length;
+
   return history.map((item, idx) => {
+    const originalIndex = allHistory.length - totalCount + idx;
     const d = new Date(item.timestamp);
     const timeLabel = isNaN(d.getTime()) 
       ? `第 ${idx + 1} 次觀測` 
-      : d.toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      : d.toLocaleString("zh-TW", { 
+          month: "numeric", 
+          day: "numeric", 
+          hour: "2-digit", 
+          minute: "2-digit" 
+        });
+
+    const isLatest = (idx === totalCount - 1);
+    const diffHours = totalCount - 1 - idx;
+    const tag = isLatest ? " (最新)" : ` (${diffHours} 時前)`;
+
     return {
-      label: idx === history.length - 1 ? `${timeLabel} (最新)` : timeLabel,
-      index: idx,
+      label: `${timeLabel}${tag}`,
+      index: originalIndex,
       timestamp: item.timestamp,
     };
   }).reverse(); // 最新的排在最前面
@@ -240,6 +289,7 @@ function refreshData() {
 }
 
 window.WeatherAPI = {
+  getLatestUpdateTime,
   fetchObservationHistoryList,
   fetchObservationData,
   fetchForecastByCounty,

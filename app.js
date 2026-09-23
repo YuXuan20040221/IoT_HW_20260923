@@ -112,7 +112,21 @@ function getCountyMetricInfo(countyName, metric) {
   }
 }
 
-function getColor(metric, val) {
+function getColor(metric, val, wxText) {
+  if (metric === "wx") {
+    const wx = String(wxText || "");
+    if (wx.includes("雨") || wx.includes("陣雨") || wx.includes("雷") || wx.includes("豪雨") || wx.includes("大雨")) {
+      return "#3b82f6"; // 雨天: 藍色
+    }
+    if (wx.includes("多雲") || wx.includes("陰") || wx.includes("霧") || wx.includes("霾")) {
+      return "#a855f7"; // 多雲/陰天: 紫色
+    }
+    if (wx.includes("晴")) {
+      return "#ef4444"; // 晴天: 紅色
+    }
+    return "#a855f7";
+  }
+
   if (val === -99 || val === undefined || isNaN(val)) {
     return "#cbd5e1"; // 無資料淡灰
   }
@@ -207,7 +221,7 @@ function renderGeoJsonLayer() {
       const isSelected = State.selectedCounty && normalizeCountyName(State.selectedCounty) === countyName;
 
       return {
-        fillColor: getColor(State.activeMetric, info.val),
+        fillColor: getColor(State.activeMetric, info.val, info.text),
         weight: isSelected ? 3.5 : 1.5,
         opacity: 1,
         color: isSelected ? "#1d4ed8" : "#334155",
@@ -275,7 +289,7 @@ function updateLegend() {
     temp: { min: "15°C", max: "37°C" },
     rain: { min: "0mm", max: "100mm+" },
     humidity: { min: "50%", max: "95%" },
-    wx: { min: "晴朗", max: "陰雨" },
+    wx: { min: "晴天 (紅)", max: "雨天 (藍)" },
   };
   const lbl = labels[State.activeMetric] || { min: "", max: "" };
   minEl.textContent = lbl.min;
@@ -519,6 +533,7 @@ function bindEvents() {
     setLoading(true);
     try {
       State.obsData = await WeatherAPI.fetchObservationData(State.selectedHistoryIndex);
+      updateTimeBadge();
       renderGeoJsonLayer();
       if (State.selectedCounty) {
         renderObsCards(State.selectedCounty);
@@ -552,6 +567,13 @@ function bindEvents() {
   });
 }
 
+function updateTimeBadge() {
+  const badge = document.getElementById("badge-last-updated");
+  if (badge) {
+    badge.textContent = `觀測時間：${WeatherAPI.getLatestUpdateTime(State.selectedHistoryIndex)}`;
+  }
+}
+
 async function updateHistorySelectDropdown() {
   const select = DOM.timeSelect();
   if (!select) return;
@@ -559,7 +581,7 @@ async function updateHistorySelectDropdown() {
   try {
     const list = await WeatherAPI.fetchObservationHistoryList();
     select.innerHTML = list.map((item) => `
-      <option value="${item.index}">${item.label}</option>
+      <option value="${item.index}" ${item.index === State.selectedHistoryIndex ? "selected" : ""}>${item.label}</option>
     `).join("");
   } catch (err) {
     console.warn("取得歷史清單失敗:", err);
@@ -581,6 +603,7 @@ async function loadAllData() {
     State.geoJsonData = geo;
 
     await updateHistorySelectDropdown();
+    updateTimeBadge();
     renderGeoJsonLayer();
     updateLegend();
 

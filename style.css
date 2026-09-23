@@ -515,7 +515,7 @@ select, input { font: inherit; }
   background: linear-gradient(to right, #fef08a, #4ade80, #06b6d4, #1d4ed8);
 }
 .legend-bar.wx {
-  background: linear-gradient(to right, #fbbf24, #94a3b8, #3b82f6);
+  background: linear-gradient(to right, #ef4444, #a855f7, #3b82f6);
 }
 
 /* ── 捲軸樣式 ─────────────────────────────────────────────── */

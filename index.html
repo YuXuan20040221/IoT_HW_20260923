@@ -96,20 +96,20 @@
   <!-- ── 左側：地圖區 ───────────────────────────────────── -->
   <section id="map-section" aria-label="台灣互動地圖">
 
-    <!-- 工具列（時間切換 + 圖例） -->
+    <!-- 工具列（時間切換 + 圖例 + 最新更新時間） -->
     <div id="map-toolbar">
       <div class="toolbar-left">
         <label for="time-select">🕒 觀測時間：</label>
-        <select id="time-select" aria-label="選擇觀測時間">
-          <option value="-1">最新即時觀測</option>
+        <select id="time-select" aria-label="選擇觀測時間（過去12小時）">
+          <option value="-1">載入中...</option>
         </select>
-        <span class="badge-source">中央氣象署 CWA 資料</span>
+        <span id="badge-last-updated" class="badge-source">資料更新時間：—</span>
       </div>
 
       <!-- 色階圖例 -->
       <div class="legend" aria-label="顏色圖例">
         <span id="legend-min">15°C</span>
-        <div class="legend-bar temp" role="img" aria-label="溫度色階從低到高"></div>
+        <div class="legend-bar temp" role="img" aria-label="色階從低到高"></div>
         <span id="legend-max">37°C</span>
       </div>
     </div>
