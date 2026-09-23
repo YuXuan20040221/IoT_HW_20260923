@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台灣即時天氣儀表板</title>
+  <meta name="description" content="查看台灣各縣市即時天氣觀測資料與未來一週預報，資料來源：中央氣象署開放資料平台。" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS & JS (高精度地圖支援) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- 自定義樣式 -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+<!-- ============================================================
+     載入遮罩
+     ============================================================ -->
+<div id="loading-overlay" aria-live="polite" aria-label="資料載入中">
+  <div class="spinner"></div>
+  <p>正在載入天氣資料與圖資…</p>
+</div>
+
+<!-- 錯誤橫幅 -->
+<div id="error-banner" role="alert"></div>
+
+<!-- ============================================================
+     導覽列 (Navbar)
+     ============================================================ -->
+<header id="navbar" role="banner">
+  <!-- 品牌標題 -->
+  <div class="navbar-brand">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         aria-hidden="true">
+      <path d="M12 2a7 7 0 0 1 7 7c0 5.25-7 13-7 13S5 14.25 5 9a7 7 0 0 1 7-7z"/>
+      <circle cx="12" cy="9" r="2.5"/>
+    </svg>
+    <span>台灣天氣儀表板</span>
+  </div>
+
+  <!-- 指標切換 Tabs -->
+  <nav class="nav-tabs" role="tablist" aria-label="天氣指標切換">
+    <button id="tab-temp"
+            class="nav-tab active"
+            role="tab"
+            aria-selected="true"
+            data-metric="temp">🌡 溫度</button>
+    <button id="tab-rain"
+            class="nav-tab"
+            role="tab"
+            aria-selected="false"
+            data-metric="rain">🌧 雨量</button>
+    <button id="tab-humidity"
+            class="nav-tab"
+            role="tab"
+            aria-selected="false"
+            data-metric="humidity">💧 濕度</button>
+    <button id="tab-wx"
+            class="nav-tab"
+            role="tab"
+            aria-selected="false"
+            data-metric="wx">⛅ 天氣現象</button>
+  </nav>
+
+  <!-- 重新整理按鈕 -->
+  <button id="btn-refresh" type="button" title="重新載入最新資料" aria-label="重新整理">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+         aria-hidden="true">
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+      <path d="M21 3v5h-5"/>
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+      <path d="M3 21v-5h5"/>
+    </svg>
+    <span>重新整理</span>
+  </button>
+</header>
+
+<!-- ============================================================
+     主體：左右雙欄
+     ============================================================ -->
+<div id="app">
+
+  <!-- ── 左側：地圖區 ───────────────────────────────────── -->
+  <section id="map-section" aria-label="台灣互動地圖">
+
+    <!-- 工具列（時間切換 + 圖例） -->
+    <div id="map-toolbar">
+      <div class="toolbar-left">
+        <label for="time-select">🕒 觀測時間：</label>
+        <select id="time-select" aria-label="選擇觀測時間">
+          <option value="-1">最新即時觀測</option>
+        </select>
+        <span class="badge-source">中央氣象署 CWA 資料</span>
+      </div>
+
+      <!-- 色階圖例 -->
+      <div class="legend" aria-label="顏色圖例">
+        <span id="legend-min">15°C</span>
+        <div class="legend-bar temp" role="img" aria-label="溫度色階從低到高"></div>
+        <span id="legend-max">37°C</span>
+      </div>
+    </div>
+
+    <!-- 地圖容器（由 Leaflet 渲染高精度台灣地圖、分界線與地名） -->
+    <div id="map-container">
+      <div id="map" role="region" aria-label="高精度台灣互動地圖"></div>
+    </div>
+  </section><!-- /#map-section -->
+
+  <!-- ── 右側：資訊面板 ────────────────────────────────────── -->
+  <aside id="info-panel" role="complementary" aria-label="縣市天氣詳細資訊">
+
+    <!-- 面板 Header -->
+    <header id="panel-header">
+      <div>
+        <h2 id="panel-city-name">縣市名稱</h2>
+        <span id="panel-station-info" class="panel-subtitle">測站資訊</span>
+      </div>
+      <button id="btn-close-panel"
+              type="button"
+              aria-label="關閉資訊面板"
+              title="關閉">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+             aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- 即時觀測資訊卡區 -->
+    <div id="current-obs" aria-label="即時觀測資料">
+      <!-- 由 app.js renderObsCards() 動態填入 -->
+    </div>
+
+    <!-- 預報區塊 -->
+    <section class="panel-section" aria-label="天氣預報">
+      <div class="section-header-row">
+        <p class="panel-section-title">天氣預報 (F-D0047-091)</p>
+        <!-- 預報類型切換 -->
+        <select id="forecast-type-select" aria-label="選擇預報類型">
+          <option value="weekly">未來一週天氣預測</option>
+          <option value="hourly">今日逐 3 小時預報</option>
+        </select>
+      </div>
+
+      <!-- 預報列表 -->
+      <div id="hourly-list" role="list" aria-label="預報清單">
+        <!-- 由 app.js renderForecastSection() 動態填入 -->
+      </div>
+    </section>
+
+    <!-- 圖表區塊 -->
+    <section class="panel-section" aria-label="統計圖表">
+      <p class="panel-section-title">統計趨勢圖表</p>
+
+      <!-- 圖表選項 Checkbox -->
+      <div class="chart-options">
+        <label class="chart-option" for="chk-temp-line">
+          <input type="checkbox" id="chk-temp-line" checked aria-label="顯示未來一週高低溫折線圖" />
+          未來一週最高 / 最低溫折線圖
+        </label>
+        <label class="chart-option" for="chk-rain-bar">
+          <input type="checkbox" id="chk-rain-bar" aria-label="顯示降雨機率長條圖" />
+          未來一週降雨機率長條圖
+        </label>
+      </div>
+
+      <!-- 高低溫折線圖 -->
+      <div id="chart-temp-wrapper" class="chart-wrapper" style="height:190px;">
+        <canvas id="chart-temp" aria-label="未來一週高低溫折線圖" role="img"></canvas>
+      </div>
+
+      <!-- 降雨機率長條圖 -->
+      <div id="chart-rain-wrapper" class="chart-wrapper" style="height:170px;display:none;">
+        <canvas id="chart-rain" aria-label="降雨機率長條圖" role="img"></canvas>
+      </div>
+    </section>
+
+  </aside><!-- /#info-panel -->
+
+</div><!-- /#app -->
+
+<!-- ============================================================
+     Scripts（api.js 在 app.js 之前載入）
+     ============================================================ -->
+<script src="api.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
