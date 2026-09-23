@@ -1,9 +1,10 @@
 # 台灣天氣預報儀表板 (IoT Weather Dashboard)
 
-本專案採用 **Jamstack 架構**：
-- **前端 (GitHub Pages)**：純靜態頁面（HTML5 + 原生 JavaScript + Vanilla CSS + Chart.js + **Leaflet.js 高精度台灣地理邊界地圖**）。
-- **資料自動更新 (GitHub Actions)**：定時排程執行後端腳本，分別呼叫中央氣象署 API，產生獨立的 `data/O-A0001-001.json` 與 `data/F-D0047-091.json` 並自動 commit & push。
-- **安全機制 (GitHub Secrets)**：API Key 妥善保存在 GitHub Secrets 中，**前端程式碼完全不含任何金鑰**，亦無 CORS 跨網域阻擋問題。
+本專案採用 **Jamstack 架構**，專為 **Vercel** 與純靜態雲端平台最佳化：
+- **前端 (Vercel)**：純靜態頁面（HTML5 + 原生 JavaScript + Vanilla CSS + Chart.js + **Leaflet.js 高精度台灣向量地圖**）。
+- **資料自動定時更新 (GitHub Actions)**：定時排程抓取中央氣象署 API，產生獨立的 `data/O-A0001-001.json` 與 `data/F-D0047-091.json` 並自動 commit & push 回 GitHub。
+- **自動化持續部署 (Vercel CI/CD)**：GitHub 收到新天氣資料後，**Vercel 會自動觸發即時重新部署**，使用者隨時都能看到最新預報！
+- **安全性 (GitHub Secrets)**：API Key 妥善保存在 GitHub Secrets 中，**前端完全零金鑰暴露**，亦無 CORS 跨網域阻擋問題。
 
 ---
 
@@ -17,14 +18,60 @@ IoT_HW_20260923/
 │   ├── fetch_weather.py       # Python 抓取腳本 (支援無依賴執行)
 │   └── fetch-weather.js       # Node.js 抓取腳本 (GitHub Actions 執行)
 ├── data/
-│   ├── O-A0001-001.json       # 氣象署即時觀測資料 (22 縣市測站溫濕度、雨量)
+│   ├── O-A0001-001.json       # 氣象署即時觀測資料 (含歷史時間點累積)
 │   ├── F-D0047-091.json       # 氣象署預報資料 (22 縣市未來一週與逐時預報)
 │   └── taiwan_counties.json   # 台灣 22 縣市高精度向量邊界圖資 (GeoJSON)
-├── index.html                 # 儀表板主要頁面 (Leaflet 地圖 + 雙欄儀表板)
-├── style.css                  # 響應式 (RWD) 現代化樣式與地圖主題
-├── api.js                     # 分別讀取 O-A0001-001.json 與 F-D0047-091.json 並提供解析
-└── app.js                     # Leaflet 地圖渲染、縣市動態上色、地名標籤、Chart.js 圖表
+├── index.html                 # 儀表板主要頁面
+├── style.css                  # 響應式 (RWD) 現代化樣式
+├── api.js                     # 讀取氣象 JSON 資料與解析器
+├── app.js                     # Leaflet 地圖、縣市動態上色、Chart.js 圖表
+├── vercel.json                # Vercel 部署路由與快取設定
+└── package.json               # 專案資訊與執行腳本
 ```
+
+---
+
+## 🚀 Vercel 部署教學步驟（5 分鐘快速上線）
+
+### 步驟 1：將程式碼 Push 到你的 GitHub Repository
+在終端機（PowerShell / Git Bash）執行：
+```powershell
+git add .
+git commit -m "feat: configure for vercel deployment"
+git push origin main
+```
+
+---
+
+### 步驟 2：在 GitHub 設定氣象署 API Key (Secrets)
+1. 進入你的 GitHub Repository 頁面。
+2. 點擊 **Settings** ➔ **Secrets and variables** ➔ **Actions**。
+3. 點擊 **New repository secret**：
+   - **Name**: `CWA_API_KEY`
+   - **Secret**: 填入你在中央氣象署申請的授權碼（如 `CWA-3B6865FE-6EE7-43F4-97A1-4C51038A70CF`）。
+4. 點擊 **Add secret**。
+5. 前往 **Settings** ➔ **Actions** ➔ **General** ➔ 捲到下方 **Workflow permissions** ➔ 勾選 **Read and write permissions** ➔ 點擊 **Save**。
+
+---
+
+### 步驟 3：在 Vercel 上匯入專案並部署
+1. 前往 [Vercel 官網 (vercel.com)](https://vercel.com/)，使用你的 **GitHub 帳號** 登入。
+2. 登入後點擊右上角的 **「Add New...」** ➔ 選擇 **「Project」**。
+3. 在 **Import Git Repository** 清單中，找到你的 `IoT_HW_20260923` 專案，點擊 **「Import」**。
+4. **設定頁面 (Configure Project)**：
+   - **Framework Preset**: 選擇 `Other`（或保留預設）。
+   - **Root Directory**: `./`（保留預設）。
+   - **Build and Output Settings**: 無需修改。
+5. 點擊 **「Deploy」** 按鈕！
+6. 幾秒鐘內建置完成，點擊畫面上的 **「Visit」** 或預覽圖，就能看到你的專屬 Vercel 上線網址（例如 `https://iot-hw-20260923.vercel.app`）！
+
+---
+
+### 步驟 4：測試與驗證自動更新
+- 之後 GitHub Actions 每天定時抓取最新天氣資料並 push 回 GitHub 時，**Vercel 會自動偵測並重新部署最新資料**！
+- 若想立即手動更新：
+  前往 GitHub Repo ➔ **Actions** ➔ 點擊 **Update Weather Data** ➔ 點擊 **Run workflow**。
+
 
 ---
 

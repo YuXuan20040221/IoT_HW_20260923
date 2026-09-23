@@ -1,0 +1,20 @@
+{
+  "name": "taiwan-weather-dashboard",
+  "version": "1.0.0",
+  "description": "台灣各縣市即時天氣觀測與未來一週預報儀表板",
+  "main": "app.js",
+  "scripts": {
+    "fetch-data": "node scripts/fetch-weather.js",
+    "fetch-data:py": "python scripts/fetch_weather.py"
+  },
+  "keywords": [
+    "weather",
+    "taiwan",
+    "cwa",
+    "dashboard",
+    "leaflet",
+    "chartjs"
+  ],
+  "author": "",
+  "license": "MIT"
+}
