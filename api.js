@@ -68,21 +68,17 @@ async function fetchObservationHistoryList() {
   return history.map((item, idx) => {
     const originalIndex = allHistory.length - totalCount + idx;
     const d = new Date(item.timestamp);
-    const timeLabel = isNaN(d.getTime()) 
-      ? `第 ${idx + 1} 次觀測` 
-      : d.toLocaleString("zh-TW", { 
-          month: "numeric", 
-          day: "numeric", 
-          hour: "2-digit", 
-          minute: "2-digit" 
-        });
-
-    const isLatest = (idx === totalCount - 1);
-    const diffHours = totalCount - 1 - idx;
-    const tag = isLatest ? " (最新)" : ` (${diffHours} 時前)`;
+    const timeLabel = isNaN(d.getTime())
+      ? `第 ${idx + 1} 次觀測`
+      : d.toLocaleString("zh-TW", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
 
     return {
-      label: `${timeLabel}${tag}`,
+      label: `${timeLabel}`,
       index: originalIndex,
       timestamp: item.timestamp,
     };
@@ -220,10 +216,10 @@ function parseForecastChart(forecastData) {
     const dateStr = timeObj.StartTime || timeObj.DataTime || "";
     const label = dateStr
       ? new Date(dateStr).toLocaleDateString("zh-TW", {
-          month: "numeric",
-          day: "numeric",
-          weekday: "short",
-        })
+        month: "numeric",
+        day: "numeric",
+        weekday: "short",
+      })
       : `Day ${i + 1}`;
 
     const maxVal = maxTimes[i]?.ElementValue?.[0]?.MaxTemperature || maxTimes[i]?.ElementValue?.[0]?.MaxT || 0;
@@ -257,11 +253,11 @@ function parseHourlyForecast(forecastData) {
     const startStr = wxTimes[i]?.StartTime || wxTimes[i]?.DataTime || "";
     const time = startStr
       ? new Date(startStr).toLocaleString("zh-TW", {
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
       : `時段 ${i + 1}`;
 
     const wxItem = wxTimes[i]?.ElementValue?.[0] || {};
